@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YES PRUDENCE</title>
+<meta name="application-name" content="YES PRUDENCE">
+<meta name="apple-mobile-web-app-title" content="YES PRUDENCE">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2342a6">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+/* ============ SETTINGS: edit these ============ */
+const CONFIG = {
+  school: "Our School",            // shown under the title
+  teacherPin: "1234",              // change this before sharing the link
+  // Paste your Firebase web config here (see setup guide). Leave empty = demo mode on this phone only.
+  firebase: {
+    // apiKey: "...", authDomain: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..."
+  }
+};
+/* Starting roster (teacher can rename students inside the app) */
+const DEFAULT_ROSTER = [
+  {id:"anglorium",  name:"Anglorium",  students:["Aitsham Farooq (9th)","Gulam Murtaza (7th)","Adeeba Sajad (7th)"]},
+  {id:"technorium", name:"Technorium", students:["Mohd Hafeez (9th)","Salman Tahir (8th)","Basharat Ahmed (7th)"]},
+  {id:"sensorium",  name:"Sensorium",  students:["Rubeena Akhter (9th)","Ayan Manzoor (8th)","Shagufta Bano (9th)"]},
+  {id:"victorium",  name:"Victorium",  students:["Mohd Imran (9th)","Faizan Bashir (7th)"]},
+  {id:"mathrubhasha", name:"Mathrubhasha", students:["Iqra Ashraf (10th)","Ruksana Kouser (9th)","Aliya Abas (7th)","Surayya Mushtaq (9th)"]}
+];
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+/* VOICE: friendly school register, calm and quick to fill on a phone
+   IDEA: a class diary page - ruled lines, red margin, ticks in ink
+   PICTURE: the day's register itself - who has filled the diary, ticks and week dots
+   COLOUR and TYPE: paper white, ink blue #2342a6, margin red #d6453d, tick green #1f8a4c; Lexend
+   LAYOUT: one column up to 760px; sticky date bar; cards per club */
+:root{color-scheme:light dark;--bg:light-dark(#f4f6fb,#0f1424);--paper:light-dark(#ffffff,#171e33);--ink:light-dark(#18213d,#e8ecf7);--mute:light-dark(#5d6787,#9aa5c4);--line:light-dark(#e3e8f4,#27304b);--blue:light-dark(#2342a6,#7f9cff);--red:#d6453d;--ok:light-dark(#1f8a4c,#4fd08a);--okbg:light-dark(#e3f5ea,#163526);--warnbg:light-dark(#fdeceb,#3a1c1c)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Lexend,system-ui,sans-serif;overflow-x:clip}
+header{background:#2342a6;color:#fff;padding:18px max(4vw,16px) 16px}
+header h1{margin:0;font-size:28px;line-height:1.1;font-weight:700}
+header p{margin:4px 0 0;opacity:.85;font-size:14px}
+.roles{display:flex;gap:6px;margin-top:14px;background:rgba(255,255,255,.14);padding:4px;border-radius:12px}
+.roles button{flex:1;border:0;background:none;color:#fff;font:600 15px Lexend,system-ui,sans-serif;padding:10px;border-radius:9px;min-height:44px;cursor:pointer}
+.roles button.on{background:#fff;color:#2342a6}
+.datebar{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;padding:10px max(4vw,16px);flex-wrap:wrap}
+.datebar input{flex:1;max-width:190px}
+main{max-width:760px;margin:0 auto;padding:16px max(4vw,14px) 80px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px 16px 16px 26px;margin-bottom:14px;position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;left:14px;top:0;bottom:0;width:2px;background:var(--red);opacity:.55}
+h2{font-size:20px;margin:0 0 10px;line-height:1.2}
+h3{font-size:16px;margin:14px 0 6px}
+.mute{color:var(--mute);font-size:14px}
+input,textarea,select{width:100%;font:16px Lexend,system-ui,sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
+textarea{min-height:76px;resize:vertical}
+input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.btn{border:0;border-radius:11px;background:var(--blue);color:#fff;font:600 15px Lexend,system-ui,sans-serif;padding:11px 18px;min-height:44px;cursor:pointer}
+:root .btn{background:#2342a6}
+.btn.ghost{background:transparent;color:var(--blue);border:1px solid var(--line)}
+.btn.small{padding:8px 12px;min-height:40px;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:10px 16px;font:500 15px Lexend,system-ui,sans-serif;min-height:44px;cursor:pointer}
+.chip.on{background:#2342a6;color:#fff;border-color:#2342a6}
+.item{border-top:1px dashed var(--line);padding:12px 0}
+.item:first-of-type{border-top:0}
+.item label.tick{display:flex;gap:10px;align-items:flex-start;font-weight:500;cursor:pointer}
+.item input[type=checkbox]{width:24px;height:24px;min-height:0;flex:none;accent-color:#1f8a4c;margin-top:1px}
+.item a{color:var(--blue);font-size:14px;word-break:break-all}
+.word{font-size:20px;font-weight:700;color:var(--blue)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+@media(max-width:520px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.big{font-size:clamp(40px,11vw,64px);font-weight:700;line-height:1;color:var(--blue)}
+.bar{height:12px;background:var(--line);border-radius:99px;overflow:hidden;margin:12px 0 4px}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .4s}
+.stu{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.stu:first-of-type{border-top:0}
+.stu .nm{flex:1;font-weight:500}
+.dots{display:flex;gap:4px}
+.dots b{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.dots b.y{background:var(--ok)}
+.st{font-size:13px;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.st.y{background:var(--okbg);color:var(--ok)}.st.n{background:var(--warnbg);color:var(--red)}
+.detail{background:var(--bg);border-radius:12px;padding:12px;margin:0 0 10px;font-size:15px}
+.detail p{margin:4px 0}
+.tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto}.tabs .chip{flex:none;white-space:nowrap}
+input[type=range]{border:0;background:none;accent-color:#2342a6;min-height:36px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#18213d;color:#fff;padding:12px 18px;border-radius:12px;font-size:15px;box-shadow:0 8px 30px rgba(0,0,0,.25);z-index:20;max-width:92vw}
+.demo{background:#fff4d6;color:#5a4300;font-size:13px;padding:8px max(4vw,16px)}
+.hidden{display:none!important}
+@media(prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>YES PRUDENCE</h1>
+  <p id="school"></p>
+  <div class="roles"><button id="rStu" class="on">Student</button><button id="rTea">Teacher</button></div>
+</header>
+<div id="demo" class="demo hidden">Demo mode: data stays on this phone only. Add your Firebase settings to sync between phones.</div>
+<div class="datebar">
+  <button class="btn ghost small" id="prev" aria-label="Previous day">‹</button>
+  <input type="date" id="date">
+  <button class="btn ghost small" id="next" aria-label="Next day">›</button>
+  <button class="btn ghost small" id="today">Today</button>
+</div>
+<main>
+  <section id="student"></section>
+  <section id="teacher" class="hidden"></section>
+</main>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+{
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const safeUrl=u=>/^https:\/\//i.test(u||"")?u:"";
+const iso=d=>d.toLocaleDateString("en-CA");
+const addDays=(s,n)=>{const d=new Date(s+"T12:00:00");d.setDate(d.getDate()+n);return iso(d)};
+const nice=s=>new Date(s+"T12:00:00").toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"});
+const ls={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- storage: Firebase or local demo ---------- */
+const useFb=!!(CONFIG.firebase&&CONFIG.firebase.projectId&&window.firebase);
+let fdb=null;
+if(useFb){firebase.initializeApp(CONFIG.firebase);fdb=firebase.firestore();}else{$("#demo").classList.remove("hidden");}
+const local={data:ls.get("cd_demo",{}),subs:[],save(){ls.set("cd_demo",this.data);this.subs.forEach(f=>f())}};
+const Store={
+  async get(col,id){if(fdb){const s=await fdb.collection(col).doc(id).get();return s.exists?s.data():null}return (local.data[col]||{})[id]||null},
+  async set(col,id,v){if(fdb)return fdb.collection(col).doc(id).set(v);(local.data[col]=local.data[col]||{})[id]=v;local.save()},
+  watchDoc(col,id,cb){if(fdb)return fdb.collection(col).doc(id).onSnapshot(s=>cb(s.exists?s.data():null),e=>showToast("Sync error: "+e.code));const f=()=>cb((local.data[col]||{})[id]||null);local.subs.push(f);f();return()=>{local.subs=local.subs.filter(x=>x!==f)}},
+  watchRange(col,from,to,cb){if(fdb)return fdb.collection(col).where("date",">=",from).where("date","<=",to).onSnapshot(s=>cb(s.docs.map(d=>({id:d.id,...d.data()}))),e=>showToast("Sync error: "+e.code));const f=()=>cb(Object.entries(local.data[col]||{}).map(([id,v])=>({id,...v})).filter(v=>v.date>=from&&v.date<=to));local.subs.push(f);f();return()=>{local.subs=local.subs.filter(x=>x!==f)}}
+};
+window.addEventListener("storage",e=>{if(e.key==="cd_demo"){local.data=ls.get("cd_demo",{});local.subs.forEach(f=>f())}});
+
+/* ---------- state ---------- */
+const S={date:iso(new Date()),role:ls.get("cd_role","student"),me:ls.get("cd_me",null),pinOk:false,tab:"dash",
+  roster:null,task:null,logs:[],open:null,started:Date.now(),seen:{},ct:[],editTask:null,delArm:null};
+let unTask=null,unLogs=null;
+$("#school").textContent=CONFIG.school;
+
+function rosterList(){const r=S.roster&&S.roster.clubs;return Array.isArray(r)&&r.length?r:DEFAULT_ROSTER.map(c=>({id:c.id,name:c.name,students:c.students.map((n,i)=>({id:c.id+"-"+(i+1),name:n}))}))}
+function findStu(id){for(const c of rosterList())for(const s of c.students)if(s.id===id)return{club:c,stu:s};return null}
+
+const TYPES={count:"Count (how many)",percent:"Progress %",check:"Done / not done",text:"Write a note"};
+const clubName=id=>id==="all"?"All clubs":((rosterList().find(c=>c.id===id)||{}).name||id);
+const tasksFor=cid=>S.ct.filter(t=>t.active!==false&&(t.club==="all"||t.club===cid));
+function lastVal(sid,tid){const r=S.logs.filter(l=>l.student===sid&&l.date<S.date&&l.tasks&&l.tasks[tid]!=null).sort((a,b)=>a.date<b.date?1:-1)[0];return r?r.tasks[tid]:null}
+function subscribe(){
+  unTask&&unTask();unLogs&&unLogs();
+  unTask=Store.watchDoc("tasks",S.date,v=>{S.task=v;render()});
+  unLogs=Store.watchRange("logs",addDays(S.date,-6),S.date,rows=>{
+    rows.forEach(r=>{const prev=S.seen[r.id];if(S.role==="teacher"&&S.pinOk&&r.updatedAt>S.started&&prev!==r.updatedAt&&r.date===S.date){const f=findStu(r.student);notify((f?f.stu.name:"A student")+" just updated the diary")}S.seen[r.id]=r.updatedAt});
+    S.logs=rows;render()});
+}
+function notify(msg){showToast(msg);try{if(window.Notification&&Notification.permission==="granted")new Notification("YES PRUDENCE",{body:msg})}catch(e){}}
+let tt;function showToast(m){const t=$("#toast");t.textContent=m;t.classList.remove("hidden");clearTimeout(tt);tt=setTimeout(()=>t.classList.add("hidden"),3500)}
+const logOf=(sid,d)=>S.logs.find(l=>l.student===sid&&l.date===d);
+const weekDots=sid=>{let h="";for(let i=6;i>=0;i--){const d=addDays(S.date,-i);h+=`<b class="${logOf(sid,d)?"y":""}" title="${esc(nice(d))}"></b>`}return`<span class="dots" aria-label="Last 7 days">${h}</span>`};
+
+/* ---------- student ---------- */
+function renderStudent(){
+  const el=$("#student");const me=S.me&&findStu(S.me);
+  if(!me){
+    const clubs=rosterList();const pick=S.pickClub||"";
+    el.innerHTML=`<div class="card"><h2>Who are you?</h2><p class="mute">Choose your club, then your name. This phone will remember you.</p>
+      <div class="chips">${clubs.map(c=>`<button class="chip ${c.id===pick?"on":""}" data-club="${esc(c.id)}">${esc(c.name)}</button>`).join("")}</div>
+      ${pick?`<h3>Your name</h3><div class="chips">${(clubs.find(c=>c.id===pick)||{students:[]}).students.map(s=>`<button class="chip" data-me="${esc(s.id)}">${esc(s.name)}</button>`).join("")}</div>`:""}</div>`;
+    return;
+  }
+  const t=S.task||{};const news=(t.news||[]).filter(n=>n&&n.title);const words=(t.words||[]).filter(w=>w&&w.word);
+  const L=logOf(S.me,S.date)||{};const done=!!L.updatedAt;
+  el.innerHTML=`<div class="card"><div class="row" style="justify-content:space-between"><div><h2 style="margin:0">Hi, ${esc(me.stu.name)}</h2><span class="mute">${esc(me.club.name)} · ${esc(nice(S.date))}</span></div><button class="btn ghost small" id="notMe">Not me</button></div>
+    <div class="row" style="margin-top:10px">${weekDots(S.me)}<span class="mute">last 7 days</span></div>
+    ${done?`<p class="st y" style="display:inline-block;margin:10px 0 0">Submitted at ${esc(new Date(L.updatedAt).toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"}))} – you can still edit</p>`:""}</div>
+  <form id="diary">
+  ${clubTaskCard(me.club.id,L)}
+  <div class="card"><h2>Today's 3 news</h2>${news.length?news.map((n,i)=>`<div class="item"><label class="tick"><input type="checkbox" name="nr${i}" ${L.news&&L.news[i]&&L.news[i].read?"checked":""}><span>${esc(n.title)}</span></label>
+      ${n.why?`<p class="mute" style="margin:4px 0 0 34px">${esc(n.why)}</p>`:""}${safeUrl(n.link)?`<p style="margin:4px 0 0 34px"><a href="${esc(safeUrl(n.link))}" target="_blank" rel="noopener">Open news</a></p>`:""}
+      <input name="ns${i}" placeholder="One line: what did you learn?" style="margin-top:8px" value="${esc(L.news&&L.news[i]&&L.news[i].note)}"></div>`).join(""):`<p class="mute">Teacher has not posted today's news yet. You can still write what you read below.</p>`}</div>
+  <div class="card"><h2>Today's 3 words</h2>${words.length?words.map((w,i)=>`<div class="item"><div class="word">${esc(w.word)}</div><p style="margin:2px 0">${esc(w.meaning)}</p>${w.example?`<p class="mute" style="margin:2px 0"><i>${esc(w.example)}</i></p>`:""}
+      <input name="ws${i}" placeholder="Write your own sentence with this word" style="margin-top:8px" value="${esc(L.words&&L.words[i])}"></div>`).join(""):`<p class="mute">No words posted yet for this day.</p>`}</div>
+  <div class="card"><h2>What I studied today</h2><textarea name="studied" placeholder="Topics, chapters, practice…">${esc(L.studied)}</textarea>
+    <div class="grid2" style="margin-top:8px"><label class="mute">Minutes studied<input name="mins" type="number" min="0" max="900" inputmode="numeric" value="${esc(L.mins)}"></label>
+    <label class="mute">Other news I read<input name="extra" value="${esc(L.extra)}" placeholder="optional"></label></div></div>
+  <button class="btn" style="width:100%" type="submit">${done?"Update my diary":"Submit my diary"}</button></form>`;
+}
+function clubTaskCard(cid,L){
+  const ts=tasksFor(cid);if(!ts.length)return"";const v=L.tasks||{};
+  return`<div class="card"><h2>My club tasks</h2>${ts.map(t=>{const n="ct_"+t.id;const cur=v[t.id];let inp="";
+    if(t.type==="count")inp=`<div class="row"><input name="${esc(n)}" type="number" min="0" inputmode="numeric" style="max-width:140px" value="${esc(cur)}"><span class="mute">${esc(t.unit||"")}${t.target?" · target "+esc(t.target):""}</span></div>`;
+    else if(t.type==="percent"){const val=Number(cur??lastVal(S.me,t.id)??0)||0;inp=`<div class="row"><input name="${esc(n)}" type="range" min="0" max="100" step="5" value="${val}" data-pct style="flex:1;padding:0"><b class="pctv" style="width:48px;text-align:right">${val}%</b></div>`}
+    else if(t.type==="check")inp=`<label class="tick"><input type="checkbox" name="${esc(n)}" ${cur?"checked":""}><span>Done</span></label>`;
+    else inp=`<textarea name="${esc(n)}" placeholder="Write here">${esc(cur)}</textarea>`;
+    return`<div class="item"><p style="margin:0 0 6px;font-weight:600">${esc(t.title)}</p>${t.desc?`<p class="mute" style="margin:0 0 8px">${esc(t.desc)}</p>`:""}${inp}</div>`}).join("")}</div>`;
+}
+async function saveDiary(f){
+  const t=S.task||{};const n=(t.news||[]).filter(x=>x&&x.title).length,w=(t.words||[]).filter(x=>x&&x.word).length;
+  const fd=new FormData(f);const v={student:S.me,club:findStu(S.me).club.id,date:S.date,updatedAt:Date.now(),
+    news:Array.from({length:n},(_,i)=>({read:fd.get("nr"+i)==="on",note:(fd.get("ns"+i)||"").trim()})),
+    words:Array.from({length:w},(_,i)=>(fd.get("ws"+i)||"").trim()),
+    studied:(fd.get("studied")||"").trim(),mins:Number(fd.get("mins"))||0,extra:(fd.get("extra")||"").trim(),tasks:{}};
+  for(const t of tasksFor(v.club)){const raw=fd.get("ct_"+t.id);
+    v.tasks[t.id]=t.type==="check"?raw==="on":t.type==="text"?(raw||"").trim():(raw===null||raw===""?null:Number(raw));}
+  try{await Store.set("logs",S.date+"_"+S.me,v);showToast("Saved. Well done!")}catch(e){showToast("Could not save – check internet and try again")}
+}
+
+/* ---------- teacher ---------- */
+function renderTeacher(){
+  const el=$("#teacher");
+  if(!S.pinOk){el.innerHTML=`<div class="card"><h2>Teacher access</h2><p class="mute">Enter the teacher PIN.</p><form id="pinF" class="row"><input id="pin" type="password" inputmode="numeric" autocomplete="off" style="flex:1"><button class="btn">Open</button></form></div>`;return}
+  const tabs=[["dash","Dashboard"],["task","Today's news"],["club","Club tasks"],["roster","Students"]];
+  let h=`<div class="tabs">${tabs.map(([k,n])=>`<button class="chip ${S.tab===k?"on":""}" data-tab="${k}">${n}</button>`).join("")}</div>`;
+  const clubs=rosterList();
+  if(S.tab==="dash"){
+    const all=clubs.flatMap(c=>c.students);const done=all.filter(s=>logOf(s.id,S.date)).length;
+    h+=`<div class="card"><span class="mute">${esc(nice(S.date))}</span><div class="row" style="align-items:flex-end;gap:10px;margin-top:6px"><span class="big">${done}<span style="font-size:.5em;color:var(--mute)"> / ${all.length}</span></span><span class="mute" style="padding-bottom:8px">students filled the diary</span></div>
+      <div class="bar"><i style="width:${all.length?Math.round(done/all.length*100):0}%"></i></div>
+      ${window.Notification&&Notification.permission!=="granted"?`<button class="btn ghost small" id="notif" style="margin-top:8px">Turn on alerts while this page is open</button>`:""}</div>`;
+    h+=clubs.map(c=>{const d=c.students.filter(s=>logOf(s.id,S.date)).length;return`<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(c.name)}</h2><span class="mute">${d}/${c.students.length} today</span></div>
+      ${c.students.map(s=>{const L=logOf(s.id,S.date);return`<div class="stu" data-open="${esc(s.id)}"><span class="nm">${esc(s.name)}</span>${weekDots(s.id)}<span class="st ${L?"y":"n"}">${L?"Done":"Pending"}</span></div>${S.open===s.id&&L?detail(L):""}`}).join("")}</div>`}).join("");
+  }
+  if(S.tab==="task"){
+    const t=S.task||{};const N=[0,1,2].map(i=>(t.news||[])[i]||{}),W=[0,1,2].map(i=>(t.words||[])[i]||{});
+    h+=`<form id="taskF"><div class="card"><h2>3 news for ${esc(nice(S.date))}</h2>${N.map((n,i)=>`<div class="item"><input name="t${i}" placeholder="Headline ${i+1}" value="${esc(n.title)}"><input name="l${i}" placeholder="Link (https://…)" style="margin-top:6px" value="${esc(n.link)}"><input name="y${i}" placeholder="Why it matters (UPSC angle)" style="margin-top:6px" value="${esc(n.why)}"></div>`).join("")}</div>
+      <div class="card"><h2>3 new words</h2>${W.map((w,i)=>`<div class="item"><div class="grid2"><input name="w${i}" placeholder="Word ${i+1}" value="${esc(w.word)}"><input name="m${i}" placeholder="Meaning" value="${esc(w.meaning)}"></div><input name="e${i}" placeholder="Example sentence" style="margin-top:6px" value="${esc(w.example)}"></div>`).join("")}</div>
+      <div class="row"><button class="btn" type="submit">Save task</button><a class="btn ghost" id="wa" href="#" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">Share on WhatsApp</a></div></form>`;
+  }
+  if(S.tab==="club"){
+    const e=S.ct.find(t=>t.id===S.editTask)||{club:"all",type:"count"};
+    h+=`<form id="ctF" class="card"><h2>${S.editTask?"Edit task":"Add a task"}</h2>
+      <label class="mute">Task name<input name="title" required placeholder="e.g. GK questions learned" value="${esc(e.title)}"></label>
+      <div class="grid2" style="margin-top:8px"><label class="mute">For club<select name="club"><option value="all">All clubs</option>${clubs.map(c=>`<option value="${esc(c.id)}" ${e.club===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
+      <label class="mute">Students answer with<select name="type">${Object.entries(TYPES).map(([k,n])=>`<option value="${k}" ${e.type===k?"selected":""}>${n}</option>`).join("")}</select></label></div>
+      <div class="grid2" style="margin-top:8px"><label class="mute">Daily target (for count)<input name="target" type="number" min="0" inputmode="numeric" value="${esc(e.target)}"></label>
+      <label class="mute">Unit (for count)<input name="unit" placeholder="questions, pages…" value="${esc(e.unit)}"></label></div>
+      <label class="mute" style="display:block;margin-top:8px">Instructions (optional)<textarea name="desc" placeholder="What should students do?">${esc(e.desc)}</textarea></label>
+      <div class="row" style="margin-top:10px"><button class="btn" type="submit">${S.editTask?"Save changes":"Add task"}</button>${S.editTask?`<button class="btn ghost" type="button" id="ctCancel">Cancel</button>`:""}</div></form>`;
+    h+=`<div class="card"><h2>Current tasks</h2>${S.ct.length?S.ct.map(t=>`<div class="item"><div class="row" style="justify-content:space-between"><div><b>${esc(t.title)}</b><br><span class="mute">${esc(clubName(t.club))} · ${esc(TYPES[t.type]||t.type)}${t.target?" · target "+esc(t.target)+" "+esc(t.unit||""):""}</span></div><span class="st ${t.active===false?"n":"y"}">${t.active===false?"Paused":"Active"}</span></div>
+      <div class="row" style="margin-top:8px"><button class="btn ghost small" data-ctedit="${esc(t.id)}">Edit</button><button class="btn ghost small" data-ctpause="${esc(t.id)}">${t.active===false?"Resume":"Pause"}</button><button class="btn ghost small" data-ctdel="${esc(t.id)}" style="color:var(--red)">${S.delArm===t.id?"Tap again to delete":"Delete"}</button></div></div>`).join(""):`<p class="mute">No club tasks yet. Add one above – for example "GK questions learned" for Sensorium, or "Presentation progress" as Progress %.</p>`}</div>`;
+  }
+  if(S.tab==="roster"){
+    h+=`<form id="rosF">${clubs.map((c,ci)=>`<div class="card"><h2>${esc(c.name)}</h2>${c.students.map((s,si)=>`<input name="s_${ci}_${si}" value="${esc(s.name)}" style="margin-bottom:8px" aria-label="Student name">`).join("")}</div>`).join("")}<button class="btn" type="submit">Save names</button></form>`;
+  }
+  el.innerHTML=h;
+  const wa=$("#wa");if(wa)wa.href="https://wa.me/?text="+encodeURIComponent(waText());
+}
+function detail(L){
+  const t=S.task||{};
+  return`<div class="detail">${(L.news||[]).map((n,i)=>`<p>${n.read?"✓":"✗"} <b>${esc(((t.news||[])[i]||{}).title||"News "+(i+1))}</b>${n.note?" – "+esc(n.note):""}</p>`).join("")}
+  ${(L.words||[]).map((w,i)=>w?`<p><b>${esc(((t.words||[])[i]||{}).word||"Word")}:</b> ${esc(w)}</p>`:"").join("")}
+  ${L.studied?`<p><b>Studied:</b> ${esc(L.studied)}</p>`:""}${L.mins?`<p><b>Time:</b> ${esc(L.mins)} min</p>`:""}${L.extra?`<p><b>Also read:</b> ${esc(L.extra)}</p>`:""}
+  ${Object.entries(L.tasks||{}).map(([id,val])=>{const tk=S.ct.find(x=>x.id===id);if(!tk||val===null||val===""||val===undefined)return"";
+    if(tk.type==="percent")return`<p><b>${esc(tk.title)}:</b> ${esc(val)}%</p><div class="bar" style="margin:2px 0 8px;height:8px"><i style="width:${Math.max(0,Math.min(100,Number(val)||0))}%"></i></div>`;
+    if(tk.type==="check")return`<p>${val?"✓":"✗"} <b>${esc(tk.title)}</b></p>`;
+    if(tk.type==="count")return`<p><b>${esc(tk.title)}:</b> ${esc(val)}${tk.target?" / "+esc(tk.target):""} ${esc(tk.unit||"")}</p>`;
+    return`<p><b>${esc(tk.title)}:</b> ${esc(val)}</p>`}).join("")}
+  <p class="mute">Updated ${esc(new Date(L.updatedAt).toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"}))}</p></div>`;
+}
+function waText(){
+  const t=S.task||{};let s=`*YES PRUDENCE – ${nice(S.date)}*\n\n*Today's 3 news*\n`;
+  (t.news||[]).filter(n=>n&&n.title).forEach((n,i)=>{s+=`${i+1}. ${n.title}${n.why?" – "+n.why:""}${safeUrl(n.link)?"\n"+n.link:""}\n`});
+  s+=`\n*Today's 3 words*\n`;(t.words||[]).filter(w=>w&&w.word).forEach((w,i)=>{s+=`${i+1}. *${w.word}* – ${w.meaning||""}${w.example?"\n   _"+w.example+"_":""}\n`});
+  return s+`\nFill your diary today: ${location.href.split("#")[0]}`;
+}
+
+/* ---------- render + events ---------- */
+function render(force){
+  if(force===true)S.dirty=false;
+  $("#date").value=S.date;
+  $("#rStu").classList.toggle("on",S.role==="student");$("#rTea").classList.toggle("on",S.role==="teacher");
+  $("#student").classList.toggle("hidden",S.role!=="student");$("#teacher").classList.toggle("hidden",S.role!=="teacher");
+  if(S.dirty)return; // don't wipe unsaved typing when live data arrives
+  try{S.role==="student"?renderStudent():renderTeacher()}catch(err){console.error(err);const el=S.role==="student"?$("#student"):$("#teacher");el.innerHTML=`<div class="card"><h2>Something went wrong</h2><p class="mute">Please reload the page. If it keeps happening, tap Not me and choose your name again.</p><button class="btn ghost small" id="notMe">Not me</button></div>`}
+}
+function setDate(d){S.date=d;S.open=null;subscribe();render(true)}
+$("#prev").onclick=()=>setDate(addDays(S.date,-1));
+$("#next").onclick=()=>setDate(addDays(S.date,1));
+$("#today").onclick=()=>setDate(iso(new Date()));
+$("#date").onchange=e=>e.target.value&&setDate(e.target.value);
+$("#rStu").onclick=()=>{S.role="student";ls.set("cd_role","student");render(true)};
+$("#rTea").onclick=()=>{S.role="teacher";ls.set("cd_role","teacher");render(true)};
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button,[data-open]");if(!b)return;
+  if(b.dataset.club){S.pickClub=b.dataset.club;render(true)}
+  else if(b.dataset.me){S.me=b.dataset.me;ls.set("cd_me",S.me);render(true)}
+  else if(b.id==="notMe"){S.me=null;S.pickClub=null;ls.set("cd_me",null);render(true)}
+  else if(b.dataset.tab){S.tab=b.dataset.tab;render(true)}
+  else if(b.dataset.open){S.open=S.open===b.dataset.open?null:b.dataset.open;render(true)}
+  else if(b.dataset.ctedit){S.editTask=b.dataset.ctedit;S.delArm=null;render(true);window.scrollTo(0,0)}
+  else if(b.id==="ctCancel"){S.editTask=null;render(true)}
+  else if(b.dataset.ctpause){saveCt(S.ct.map(t=>t.id===b.dataset.ctpause?{...t,active:t.active===false}:t))}
+  else if(b.dataset.ctdel){const id=b.dataset.ctdel;if(S.delArm===id){S.delArm=null;if(S.editTask===id)S.editTask=null;saveCt(S.ct.filter(t=>t.id!==id))}else{S.delArm=id;render(true)}}
+  else if(b.id==="notif"){try{Notification.requestPermission().then(render)}catch(err){}}
+});
+async function saveCt(items){try{await Store.set("config","clubtasks",{items});showToast("Club tasks saved")}catch(err){showToast("Could not save")}render(true)}
+document.addEventListener("input",e=>{if(e.target.matches("[data-pct]")){const o=e.target.parentNode.querySelector(".pctv");if(o)o.textContent=e.target.value+"%"}});
+document.addEventListener("submit",async e=>{
+  e.preventDefault();const f=e.target;document.activeElement&&document.activeElement.blur();
+  if(f.id==="pinF"){if($("#pin").value===String(CONFIG.teacherPin)){S.pinOk=true;render(true)}else showToast("Wrong PIN")}
+  if(f.id==="diary")await saveDiary(f);
+  if(f.id==="taskF"){const fd=new FormData(f);const v={date:S.date,updatedAt:Date.now(),
+      news:[0,1,2].map(i=>({title:fd.get("t"+i).trim(),link:fd.get("l"+i).trim(),why:fd.get("y"+i).trim()})),
+      words:[0,1,2].map(i=>({word:fd.get("w"+i).trim(),meaning:fd.get("m"+i).trim(),example:fd.get("e"+i).trim()}))};
+    try{await Store.set("tasks",S.date,v);showToast("Task saved for "+nice(S.date))}catch(err){showToast("Could not save")}}
+  if(f.id==="ctF"){const fd=new FormData(f);const g=k=>(fd.get(k)||"").trim();
+    const t={id:S.editTask||("t"+Date.now().toString(36)),title:g("title"),club:g("club")||"all",type:g("type")||"count",target:Number(g("target"))||0,unit:g("unit"),desc:g("desc"),active:true};
+    if(!t.title){showToast("Give the task a name");return}
+    const old=S.ct.find(x=>x.id===t.id);if(old)t.active=old.active;
+    const items=old?S.ct.map(x=>x.id===t.id?t:x):[...S.ct,t];S.editTask=null;await saveCt(items);return}
+  if(f.id==="rosF"){const fd=new FormData(f);const clubs=rosterList().map((c,ci)=>({id:c.id,name:c.name,students:c.students.map((s,si)=>({id:s.id,name:(fd.get(`s_${ci}_${si}`)||s.name).trim()||s.name}))}));
+    try{await Store.set("config","roster",{clubs});showToast("Names saved")}catch(err){showToast("Could not save")}}
+  render(true);
+});
+document.addEventListener("input",e=>{if(e.target.closest("form")&&e.target.id!=="pin")S.dirty=true});
+document.addEventListener("change",e=>{if(e.target.closest("form")&&e.target.type==="checkbox")S.dirty=true});
+Store.watchDoc("config","roster",v=>{S.roster=v;render()});
+Store.watchDoc("config","clubtasks",v=>{S.ct=(v&&Array.isArray(v.items))?v.items:[];render()});
+subscribe();render(true);
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+ "name": "YES PRUDENCE",
+ "short_name": "YES PRUDENCE",
+ "start_url": "./index.html",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#f4f6fb",
+ "theme_color": "#2342a6",
+ "description": "Daily club diary for students and teachers",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any maskable"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any maskable"
+  }
+ ]
+}
